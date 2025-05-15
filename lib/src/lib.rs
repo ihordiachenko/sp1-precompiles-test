@@ -3,20 +3,30 @@ use alloy_sol_types::sol;
 sol! {
     /// The public values encoded as a struct that can be easily deserialized inside Solidity.
     struct PublicValuesStruct {
-        uint32 n;
-        uint32 a;
-        uint32 b;
+        bytes message;
+        bool use_precompile;
+        bytes32 hash;
     }
 }
 
-/// Compute the n'th fibonacci number (wrapping around on overflows), using normal Rust code.
-pub fn fibonacci(n: u32) -> (u32, u32) {
-    let mut a = 0u32;
-    let mut b = 1u32;
-    for _ in 0..n {
-        let c = a.wrapping_add(b);
-        a = b;
-        b = c;
-    }
-    (a, b)
+pub fn sha256_with_precompile(input: &[u8]) -> [u8; 32] {
+    use patched_sha2::{Digest, Sha256};
+
+    let mut hasher = Sha256::new();
+    hasher.update(input);
+    let mut result = [0u8; 32];
+    result.copy_from_slice(&hasher.finalize());
+
+    result
+}
+
+pub fn sha256(input: &[u8]) -> [u8; 32] {
+    use unpatched_sha2::{Digest, Sha256};
+
+    let mut hasher = Sha256::new();
+    hasher.update(input);
+    let mut result = [0u8; 32];
+    result.copy_from_slice(&hasher.finalize());
+
+    result
 }

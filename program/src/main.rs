@@ -1,4 +1,4 @@
-//! A simple program that takes a number `n` as input, and writes the `n-1`th and `n`th fibonacci
+//! A simple program that takes a number `n` as input, and writes the `n-1`th and `n`th hash
 //! number as an output.
 
 // These two lines are necessary for the program to properly compile.
@@ -8,23 +8,36 @@
 #![no_main]
 sp1_zkvm::entrypoint!(main);
 
-use alloy_sol_types::SolType;
-use hasher_lib::{fibonacci, PublicValuesStruct};
+use alloy_primitives::FixedBytes;
+use alloy_sol_types::SolValue;
+use hasher_lib::{sha256, sha256_with_precompile, PublicValuesStruct};
+use sp1_zkvm::io;
 
 pub fn main() {
     // Read an input to the program.
     //
     // Behind the scenes, this compiles down to a custom system call which handles reading inputs
     // from the prover.
-    let n = sp1_zkvm::io::read::<u32>();
+    let use_precompile_flag: u8 = io::read();
+    let message = io::read::<Vec<u8>>();
 
-    // Compute the n'th fibonacci number using a function from the workspace lib crate.
-    let (a, b) = fibonacci(n);
+    let use_precompile = use_precompile_flag != 0;
+
+    let hash = if use_precompile {
+        sha256_with_precompile(&message)
+    } else {
+        sha256(&message)
+    };
 
     // Encode the public values of the program.
-    let bytes = PublicValuesStruct::abi_encode(&PublicValuesStruct { n, a, b });
+    let public = PublicValuesStruct {
+        message: message.into(),
+        use_precompile,
+        hash: FixedBytes(hash),
+    };
+    let bytes = public.abi_encode();
 
     // Commit to the public values of the program. The final proof will have a commitment to all the
     // bytes that were committed to.
-    sp1_zkvm::io::commit_slice(&bytes);
+    io::commit_slice(&bytes);
 }

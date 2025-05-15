@@ -2085,6 +2085,7 @@ dependencies = [
 name = "hasher-program"
 version = "0.1.0"
 dependencies = [
+ "alloy-primitives",
  "alloy-sol-types",
  "hasher-lib",
  "sp1-zkvm",

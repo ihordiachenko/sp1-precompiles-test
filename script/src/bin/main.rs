@@ -16,7 +16,7 @@ use hasher_lib::PublicValuesStruct;
 use sp1_sdk::{include_elf, ProverClient, SP1Stdin};
 
 /// The ELF (executable and linkable format) file for the Succinct RISC-V zkVM.
-pub const FIBONACCI_ELF: &[u8] = include_elf!("hasher-program");
+pub const HASHER_ELF: &[u8] = include_elf!("hasher-program");
 
 /// The arguments for the command.
 #[derive(Parser, Debug)]
@@ -28,8 +28,11 @@ struct Args {
     #[arg(long)]
     prove: bool,
 
-    #[arg(long, default_value = "20")]
-    n: u32,
+    #[arg(long)]
+    use_precompile: bool,
+
+    #[arg(long, default_value = "Hello, world!")]
+    message: String,
 }
 
 fn main() {
@@ -44,38 +47,36 @@ fn main() {
         eprintln!("Error: You must specify either --execute or --prove");
         std::process::exit(1);
     }
-
     // Setup the prover client.
     let client = ProverClient::from_env();
 
     // Setup the inputs.
-    let mut stdin = SP1Stdin::new();
-    stdin.write(&args.n);
+    let use_precompile_flag = if args.use_precompile { 1 } else { 0 };
 
-    println!("n: {}", args.n);
+    let mut stdin = SP1Stdin::new();
+    stdin.write(&[use_precompile_flag]);
+    stdin.write(&args.message.as_bytes());
 
     if args.execute {
         // Execute the program
-        let (output, report) = client.execute(FIBONACCI_ELF, &stdin).run().unwrap();
-        println!("Program executed successfully.");
+        let (output, report) = client.execute(HASHER_ELF, &stdin).run().unwrap();
 
         // Read the output.
         let decoded = PublicValuesStruct::abi_decode(output.as_slice()).unwrap();
-        let PublicValuesStruct { n, a, b } = decoded;
-        println!("n: {}", n);
-        println!("a: {}", a);
-        println!("b: {}", b);
-
-        let (expected_a, expected_b) = hasher_lib::fibonacci(n);
-        assert_eq!(a, expected_a);
-        assert_eq!(b, expected_b);
-        println!("Values are correct!");
-
-        // Record the number of cycles executed.
-        println!("Number of cycles: {}", report.total_instruction_count());
+        let PublicValuesStruct {
+            message,
+            use_precompile: _,
+            hash,
+        } = decoded;
+        println!("Message: {}", String::from_utf8_lossy(&message));
+        println!("Hash: {:?}", hash);
+        println!(
+            "Total instruction count: {}",
+            report.total_instruction_count()
+        );
     } else {
         // Setup the program for proving.
-        let (pk, vk) = client.setup(FIBONACCI_ELF);
+        let (pk, vk) = client.setup(HASHER_ELF);
 
         // Generate the proof
         let proof = client
