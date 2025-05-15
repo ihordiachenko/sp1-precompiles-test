@@ -1,7 +1,9 @@
 [package]
-name = "fibonacci-lib"
+name = "hasher-lib"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 alloy-sol-types = { workspace = true }
+patched-sha2 = { workspace = true }
+unpatched-sha2 = { workspace = true }
