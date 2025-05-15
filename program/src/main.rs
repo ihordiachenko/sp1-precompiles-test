@@ -19,21 +19,29 @@ pub fn main() {
     // Behind the scenes, this compiles down to a custom system call which handles reading inputs
     // from the prover.
     let use_precompile_flag: u8 = io::read();
+    let rounds = io::read::<u32>() as usize;
     let message = io::read::<Vec<u8>>();
 
     let use_precompile = use_precompile_flag != 0;
 
-    let hash = if use_precompile {
-        sha256_with_precompile(&message)
-    } else {
-        sha256(&message)
-    };
+    // Run hashing 100 times
+    let mut current_hash = message.clone();
+    let mut final_hash = [0u8; 32];
+
+    for _ in 0..rounds {
+        final_hash = if use_precompile {
+            sha256_with_precompile(&current_hash)
+        } else {
+            sha256(&current_hash)
+        };
+        current_hash = final_hash.to_vec();
+    }
 
     // Encode the public values of the program.
     let public = PublicValuesStruct {
         message: message.into(),
         use_precompile,
-        hash: FixedBytes(hash),
+        hash: FixedBytes(final_hash),
     };
     let bytes = public.abi_encode();
 

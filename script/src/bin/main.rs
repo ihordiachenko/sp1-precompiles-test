@@ -31,6 +31,9 @@ struct Args {
     #[arg(long)]
     use_precompile: bool,
 
+    #[arg(long, default_value = "100")]
+    rounds: usize,
+
     #[arg(long, default_value = "Hello, world!")]
     message: String,
 }
@@ -55,6 +58,7 @@ fn main() {
 
     let mut stdin = SP1Stdin::new();
     stdin.write(&[use_precompile_flag]);
+    stdin.write(&(args.rounds as u32).to_le_bytes());
     stdin.write(&args.message.as_bytes());
 
     if args.execute {
@@ -70,6 +74,7 @@ fn main() {
         } = decoded;
         println!("Message: {}", String::from_utf8_lossy(&message));
         println!("Hash: {:?}", hash);
+        println!("Rounds: {}", args.rounds);
         println!(
             "Total instruction count: {}",
             report.total_instruction_count()
